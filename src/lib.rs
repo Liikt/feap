@@ -1,10 +1,10 @@
-use core::{ptr, cmp::Ordering};
+use core::ptr;
 
 const MAX_DEGREE: usize = 0x20;
 
 type Link<T> = *mut Node<T>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct Node<T> {
     parent:   Link<T>,
     children: Vec<Link<T>>,
@@ -14,7 +14,7 @@ struct Node<T> {
     val: T
 }
 
-impl<T: PartialEq + Eq + PartialOrd + Ord> Node<T> {
+impl<T: PartialOrd> Node<T> {
     fn new(val: T) -> Self {
         Self {
             parent:   core::ptr::null_mut(),
@@ -26,24 +26,24 @@ impl<T: PartialEq + Eq + PartialOrd + Ord> Node<T> {
     }
 }
 
-pub struct FibHeap<T: PartialEq + Eq + PartialOrd + Ord + Clone> {
+pub struct FibHeap<T: PartialOrd> {
     min: Link<T>,
     head_list: Vec<Link<T>>
 }
 
-impl<T: PartialEq + Eq + PartialOrd + Ord + Clone> Drop for FibHeap<T> {
+impl<T: PartialOrd> Drop for FibHeap<T> {
     fn drop(&mut self) {
         while self.extract_min().is_some() { }
     }
 }
 
-impl<T: PartialEq + Eq + PartialOrd + Ord + Clone> Default for FibHeap<T> {
+impl<T: PartialOrd> Default for FibHeap<T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T: PartialEq + Eq + PartialOrd + Ord + Clone> FibHeap<T> {
+impl<T: PartialOrd> FibHeap<T> {
     pub fn new() -> Self {
         Self {
             min: ptr::null_mut(),
@@ -114,10 +114,10 @@ impl<T: PartialEq + Eq + PartialOrd + Ord + Clone> FibHeap<T> {
     fn find_elem(&self, cur_node: Link<T>, val: &T) -> Option<Link<T>> {
         unsafe {
             for &c in &(*cur_node).children {
-                match (*c).val.cmp(val) {
-                    Ordering::Equal => return Some(c),
-                    Ordering::Less => return self.find_elem(c, val),
-                    _ => {}
+                if (*c).val.lt(val) {
+                    return Some(c)
+                } else if (*c).val.eq(val) {
+                    return self.find_elem(c, val);
                 }
             }
             None
@@ -158,24 +158,19 @@ impl<T: PartialEq + Eq + PartialOrd + Ord + Clone> FibHeap<T> {
                 }
             }
         }
-    } 
+    }
 }
 
 fn insert_root_list<T>(link: Link<T>, root_list: &mut [Option<Link<T>>]) -> Option<Link<T>> 
     where
-        T: PartialEq + Eq + PartialOrd + Ord + Clone {
+        T: PartialOrd {
     unsafe {
         let cur_spot = (*link).degree as usize;
         if root_list[cur_spot].is_none() {
             root_list[cur_spot] = Some(link);
             None
         } else {
-            let v1 = (*link).val.clone();
-            let v2 = 
-                (*root_list[cur_spot].unwrap())
-                .val
-                .clone();
-            let (min, max) = if v1 < v2 { 
+            let (min, max) = if (*link).val < (*root_list[cur_spot].unwrap()).val { 
                 (link, root_list[cur_spot].unwrap())
             } else { 
                 (root_list[cur_spot].unwrap(), link)

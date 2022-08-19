@@ -1,6 +1,8 @@
 use core::ptr;
+use introspection::*;
 
-const MAX_DEGREE: usize = 0x20;
+const MAX_DEGREE: usize = 0x30;
+const CONSOLIDATION_THREASHHOLD: usize = 100;
 
 type Link<T> = *mut Node<T>;
 
@@ -28,11 +30,17 @@ impl<T: PartialOrd> Node<T> {
 
 pub struct FibHeap<T: PartialOrd> {
     min: Link<T>,
-    head_list: Vec<Link<T>>
+    head_list: Vec<Link<T>>,
+    max_len: usize,
+
+    times:    introspection::Timer,
 }
 
 impl<T: PartialOrd> Drop for FibHeap<T> {
     fn drop(&mut self) {
+        #[cfg(feature = "introspection")]
+        println!("{:?}", self.times);
+
         while self.extract_min().is_some() { }
     }
 }
@@ -47,7 +55,10 @@ impl<T: PartialOrd> FibHeap<T> {
     pub fn new() -> Self {
         Self {
             min: ptr::null_mut(),
-            head_list: Vec::new()
+            head_list: Vec::new(),
+            max_len: 0,
+
+            times: Timer::new("Fibonacci Heap"),
         }
     }
 
@@ -62,6 +73,9 @@ impl<T: PartialOrd> FibHeap<T> {
     pub fn insert(&mut self, val: T) {
         let new = Box::into_raw(Box::new(Node::new(val)));
         self.insert_node(new);
+        if self.head_list.len() > CONSOLIDATION_THREASHHOLD {
+            self.consolidate(true);
+        }
     }
 
     fn insert_node(&mut self, new: Link<T>) {
@@ -73,39 +87,58 @@ impl<T: PartialOrd> FibHeap<T> {
         }
     }
 
-    pub fn extract_min(&mut self) -> Option<T> {
+    fn consolidate(&mut self, consider_min: bool) {
         unsafe {
             if self.min.is_null() {
-                return None;
+                return;
             }
-
             // Remove all children from min
+            start_timer!(self.times, TimerHook::RemoveChildHook);
             for &c in &(*self.min).children {
                 self.head_list.push(c);
                 (*c).parent = core::ptr::null_mut();
             }
+            mark_timer!(self.times, TimerHook::RemoveChildHook);
 
             // Merge trees
+            start_timer!(self.times, TimerHook::MergingHook);
             let mut root_list: Vec<Option<Link<T>>> = vec![None; MAX_DEGREE];
             for &c in &self.head_list {
-                if c != self.min {
-                    let mut tmp = insert_root_list(c, &mut root_list);
+                self.max_len = std::cmp::max(self.head_list.len(), self.max_len);
+                start_timer!(self.times, TimerHook::InnerMergingLoop);
+                if consider_min || c != self.min {
+                    let mut tmp = insert_root_list(c, &mut root_list, &mut self.times);
                     while tmp.is_some() {
-                        tmp = insert_root_list(tmp.unwrap(), &mut root_list);
+                        tmp = insert_root_list(tmp.unwrap(), &mut root_list, &mut self.times);
                     }
                 }
+                mark_timer!(self.times, TimerHook::InnerMergingLoop);
             }
+            mark_timer!(self.times, TimerHook::MergingHook);
 
+            start_timer!(self.times, TimerHook::UpdatingHook);
             // Update head_list
-            self.head_list.clear();
-            let ret = Box::from_raw(self.min);
             self.min = ptr::null_mut();
+            self.head_list.clear();
 
             for c in &root_list {
                 if c.is_some() {
                     self.insert_node(c.unwrap());
                 }
             }
+            mark_timer!(self.times, TimerHook::UpdatingHook);
+        }
+    }
+
+    pub fn extract_min(&mut self) -> Option<T> {
+        unsafe {
+            if self.min.is_null() {
+                return None;
+            }
+
+            let ret = Box::from_raw(self.min);
+
+            self.consolidate(false);
 
             Some(ret.val)
         }
@@ -161,24 +194,28 @@ impl<T: PartialOrd> FibHeap<T> {
     }
 }
 
-fn insert_root_list<T>(link: Link<T>, root_list: &mut [Option<Link<T>>]) -> Option<Link<T>> 
+fn insert_root_list<T>(link: Link<T>, root_list: &mut Vec<Option<Link<T>>>, timer: &mut Timer) -> Option<Link<T>> 
     where
         T: PartialOrd {
     unsafe {
         let cur_spot = (*link).degree as usize;
         if root_list[cur_spot].is_none() {
+            start_timer!(timer, TimerHook::FastRootListInsert);
             root_list[cur_spot] = Some(link);
+            mark_timer!(timer, TimerHook::FastRootListInsert);
             None
         } else {
+            start_timer!(timer, TimerHook::SlowRootListInsert);
             let (min, max) = if (*link).val < (*root_list[cur_spot].unwrap()).val { 
                 (link, root_list[cur_spot].unwrap())
             } else { 
                 (root_list[cur_spot].unwrap(), link)
             };
-    
+            
             (*min).children.push(max);
             (*min).degree += 1;
             root_list[cur_spot] = None;
+            mark_timer!(timer, TimerHook::SlowRootListInsert);
             Some(min)
         }
     }

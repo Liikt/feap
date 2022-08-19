@@ -1,7 +1,7 @@
 use core::ptr;
 use introspection::*;
 
-const MAX_DEGREE: usize = 0x30;
+const MAX_DEGREE: usize = 0x100;
 const CONSOLIDATION_THREASHHOLD: usize = 100;
 
 type Link<T> = *mut Node<T>;

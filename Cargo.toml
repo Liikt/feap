@@ -9,6 +9,9 @@ edition = "2021"
 rudac = "*"
 introspection = { path = "introspection" }
 
+[profile.release]
+debug = true
+
 [features]
 default = ["introspection"]
 introspection = []

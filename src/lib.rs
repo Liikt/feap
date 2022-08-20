@@ -1,7 +1,7 @@
 use core::ptr;
 
 const MAX_DEGREE: usize = 0x100;
-const CONSOLIDATION_THREASHHOLD: usize = 100;
+const CONSOLIDATION_THRESHOLD: usize = 100;
 
 type Link<T> = *mut Node<T>;
 
@@ -80,7 +80,7 @@ impl<T: PartialOrd> FibHeap<T> {
     pub fn insert(&mut self, val: T) {
         let new = Box::into_raw(Box::new(Node::new(val)));
         self.insert_node(new);
-        if self.head_list.len() > CONSOLIDATION_THREASHHOLD {
+        if self.head_list.len() > CONSOLIDATION_THRESHOLD {
             self.consolidate(true);
         }
     }

@@ -1,5 +1,6 @@
 use core::ptr;
 use introspection::*;
+use std::collections::BTreeSet;
 
 const MAX_DEGREE: usize = 0x100;
 const CONSOLIDATION_THREASHHOLD: usize = 100;
@@ -32,6 +33,7 @@ pub struct FibHeap<T: PartialOrd> {
     min: Link<T>,
     head_list: Vec<Link<T>>,
     max_len: usize,
+    node_set: BTreeSet<Link<T>>,
 
     times:    introspection::Timer,
 }
@@ -41,7 +43,7 @@ impl<T: PartialOrd> Drop for FibHeap<T> {
         #[cfg(feature = "introspection")]
         println!("{:?}", self.times);
 
-        while self.extract_min().is_some() { }
+        self.clear();
     }
 }
 
@@ -57,13 +59,19 @@ impl<T: PartialOrd> FibHeap<T> {
             min: ptr::null_mut(),
             head_list: Vec::new(),
             max_len: 0,
+            node_set: BTreeSet::new(),
 
             times: Timer::new("Fibonacci Heap"),
         }
     }
 
     pub fn clear(&mut self) {
-        while self.extract_min().is_some() { }
+        for &n in self.node_set.iter() {
+            unsafe { Box::from_raw(n) };
+        }
+        self.head_list.clear();
+        self.node_set.clear();
+        self.min = ptr::null_mut();
     }
 
     pub fn get_min(&self) -> Option<&T> {
@@ -72,6 +80,7 @@ impl<T: PartialOrd> FibHeap<T> {
 
     pub fn insert(&mut self, val: T) {
         let new = Box::into_raw(Box::new(Node::new(val)));
+        self.node_set.insert(new);
         self.insert_node(new);
         if self.head_list.len() > CONSOLIDATION_THREASHHOLD {
             self.consolidate(true);
@@ -92,6 +101,11 @@ impl<T: PartialOrd> FibHeap<T> {
             if self.min.is_null() {
                 return;
             }
+
+            if !consider_min {
+                self.node_set.remove(&self.min);
+            }
+
             // Remove all children from min
             start_timer!(self.times, TimerHook::RemoveChildHook);
             for &c in &(*self.min).children {
@@ -102,7 +116,7 @@ impl<T: PartialOrd> FibHeap<T> {
 
             // Merge trees
             start_timer!(self.times, TimerHook::MergingHook);
-            let mut root_list: Vec<Option<Link<T>>> = vec![None; MAX_DEGREE];
+            let mut root_list: Vec<Link<T>> = vec![ptr::null_mut(); MAX_DEGREE];
             for &c in &self.head_list {
                 self.max_len = std::cmp::max(self.head_list.len(), self.max_len);
                 start_timer!(self.times, TimerHook::InnerMergingLoop);
@@ -121,9 +135,9 @@ impl<T: PartialOrd> FibHeap<T> {
             self.min = ptr::null_mut();
             self.head_list.clear();
 
-            for c in &root_list {
-                if c.is_some() {
-                    self.insert_node(c.unwrap());
+            for &c in &root_list {
+                if !c.is_null() {
+                    self.insert_node(c);
                 }
             }
             mark_timer!(self.times, TimerHook::UpdatingHook);
@@ -136,11 +150,11 @@ impl<T: PartialOrd> FibHeap<T> {
                 return None;
             }
 
-            let ret = Box::from_raw(self.min);
+            let ret = self.min;
 
             self.consolidate(false);
 
-            Some(ret.val)
+            Some(Box::from_raw(ret).val)
         }
     }
 

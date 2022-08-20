@@ -152,9 +152,9 @@ impl<T: PartialOrd> FibHeap<T> {
     fn find_elem(&self, cur_node: Link<T>, val: &T) -> Option<Link<T>> {
         unsafe {
             for &c in &(*cur_node).children {
-                if (*c).val.lt(val) {
+                if (*c).val.eq(val) {
                     return Some(c)
-                } else if (*c).val.eq(val) {
+                } else if (*c).val.lt(val) {
                     return self.find_elem(c, val);
                 }
             }

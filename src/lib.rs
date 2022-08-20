@@ -236,7 +236,7 @@ mod tests {
 
     #[test]
     fn insert_one() {
-        let mut feap = FibHeap::<i32>::new();
+        let mut feap = FibHeap::new();
         feap.insert(10);
         assert_eq!(feap.get_min(), Some(&10));
         assert_eq!(feap.extract_min(), Some(10));

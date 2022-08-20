@@ -24,6 +24,7 @@ pub enum TimerHook {
     UpdatingHook,
     FastRootListInsert,
     SlowRootListInsert,
+    DecreaseKey,
 }
 
 #[derive(Clone)]

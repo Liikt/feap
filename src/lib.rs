@@ -194,27 +194,27 @@ impl<T: PartialOrd> FibHeap<T> {
     }
 }
 
-fn insert_root_list<T>(link: Link<T>, root_list: &mut Vec<Option<Link<T>>>, timer: &mut Timer) -> Option<Link<T>> 
+fn insert_root_list<T>(link: Link<T>, root_list: &mut [Link<T>], _timer: &mut Timer) -> Option<Link<T>> 
     where
         T: PartialOrd {
     unsafe {
         let cur_spot = (*link).degree as usize;
-        if root_list[cur_spot].is_none() {
-            start_timer!(timer, TimerHook::FastRootListInsert);
-            root_list[cur_spot] = Some(link);
-            mark_timer!(timer, TimerHook::FastRootListInsert);
+        if root_list[cur_spot].is_null() {
+            start_timer!(_timer, TimerHook::FastRootListInsert);
+            root_list[cur_spot] = link;
+            mark_timer!(_timer, TimerHook::FastRootListInsert);
             None
         } else {
-            start_timer!(timer, TimerHook::SlowRootListInsert);
-            let (min, max) = if (*link).val < (*root_list[cur_spot].unwrap()).val { 
-                (link, root_list[cur_spot].unwrap())
+            start_timer!(_timer, TimerHook::SlowRootListInsert);
+            let (min, max) = if (*link).val < (*root_list[cur_spot]).val { 
+                (link, root_list[cur_spot])
             } else { 
-                (root_list[cur_spot].unwrap(), link)
+                (root_list[cur_spot], link)
             };
             
             (*min).children.push(max);
             (*min).degree += 1;
-            root_list[cur_spot] = None;
+            root_list[cur_spot] = ptr::null_mut();
             mark_timer!(timer, TimerHook::SlowRootListInsert);
             Some(min)
         }

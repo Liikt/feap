@@ -134,6 +134,7 @@ impl<T: PartialOrd> FibHeap<T> {
     /// use feap::FibHeap;
     ///
     /// let mut feap = FibHeap::new();
+    /// 
     /// feap.insert(10);
     /// feap.clear();
     /// 
@@ -158,6 +159,7 @@ impl<T: PartialOrd> FibHeap<T> {
     /// feap.insert(11);
     /// feap.insert(10);
     /// assert_eq!(feap.get_min(), Some(&10));
+    /// 
     /// feap.insert(4);
     /// assert_eq!(feap.get_min(), Some(&4));
     /// ```
@@ -177,6 +179,7 @@ impl<T: PartialOrd> FibHeap<T> {
     /// let mut feap = FibHeap::new();
     /// 
     /// feap.insert(10);
+    /// 
     /// assert_eq!(feap.get_min(), Some(&10));
     /// ```
     pub fn insert(&mut self, val: T) {
@@ -259,6 +262,7 @@ impl<T: PartialOrd> FibHeap<T> {
     /// 
     /// feap.insert(10);
     /// feap.insert(4);
+    /// 
     /// assert_eq!(feap.extract_min(), Some(4));
     /// assert_eq!(feap.extract_min(), Some(10));
     /// assert_eq!(feap.extract_min(), None);
@@ -326,6 +330,7 @@ impl<T: PartialOrd> FibHeap<T> {
     /// feap.insert(5);
     /// feap.insert(10);
     /// assert_eq!(feap.get_min(), Some(&5));
+    /// 
     /// feap.decrease_key(10, 3);
     /// assert_eq!(feap.get_min(), Some(&3));
     /// ```

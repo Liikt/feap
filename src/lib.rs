@@ -5,11 +5,20 @@
 //! Example:
 //! 
 //! ```rust
+//! use feap::FibHeap;
+//! 
 //! let mut feap = FibHeap::new();
 //! feap.insert(10);
+//! 
 //! assert_eq!(feap.get_min(), Some(&10));
 //! assert_eq!(feap.extract_min(), Some(10));
 //! assert_eq!(feap.extract_min(), None);
+//! 
+//! feap.insert(10);
+//! feap.insert(5);
+//! assert_eq!(feap.get_min(), Some(&5));
+//! feap.decrease_key(10, 2);
+//! assert_eq!(feap.get_min(), Some(&2));
 //! ```
 
 use core::ptr;
@@ -327,7 +336,7 @@ impl<T: PartialOrd> FibHeap<T> {
                 cur_node = self.find_elem(t, &old_val);
                 if cur_node.is_some() { break; }
             }
-    
+
             if let Some(cur_node) = cur_node {
                 let parent = (*cur_node).parent;
                 if !parent.is_null() && (*parent).val >= new_val {

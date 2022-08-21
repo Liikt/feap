@@ -272,11 +272,12 @@ impl<T: PartialOrd> FibHeap<T> {
     /// a node with a given value.
     fn find_elem(&self, cur_node: Link<T>, val: &T) -> Option<Link<T>> {
         unsafe {
+            if (*cur_node).val.eq(val) {
+                return Some(cur_node);
+            }
             for &c in &(*cur_node).children {
-                if (*c).val.eq(val) {
-                    return Some(c)
-                } else if (*c).val.lt(val) {
-                    return self.find_elem(c, val);
+                if let Some(r) = self.find_elem(c, val) {
+                    return Some(r);
                 }
             }
             None
@@ -331,7 +332,10 @@ impl<T: PartialOrd> FibHeap<T> {
                 let parent = (*cur_node).parent;
                 if !parent.is_null() && (*parent).val >= new_val {
                     self.cut_out(cur_node);
+                } else if parent.is_null() && (*self.min).val > new_val {
+                    self.min = cur_node;
                 }
+                (*cur_node).val = new_val;
             }
         }
     }
@@ -451,5 +455,15 @@ mod tests {
         feap.clear();
         assert_eq!(feap.get_min(), None);
         assert_eq!(feap.head_list.len(), 0);
+    }
+
+    #[test]
+    fn decrease_key() {
+        let mut feap = FibHeap::new();
+        feap.insert(5);
+        feap.insert(10);
+        assert_eq!(feap.get_min(), Some(&5));
+        feap.decrease_key(10, 3);
+        assert_eq!(feap.get_min(), Some(&3));
     }
 }
